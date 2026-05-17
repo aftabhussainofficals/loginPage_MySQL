@@ -6,7 +6,7 @@
 using namespace std;
 const char* DB_HOST ="localhost";
 const char* DB_USER ="root";
-const char* DB_PASSWORD= "Aft@bhussain00";
+const char* DB_PASSWORD= "Aft@bhussain00";    //my local db pasword 
 const char* DB_NAME= "login";
 const int DB_PORT= 3306;
 
@@ -25,7 +25,7 @@ bool signupUser(MYSQL* connection, string username, string password,string email
     MYSQL_RES* result = mysql_store_result(connection);
 
     if(mysql_num_rows(result)>0){
-        cout<<"Username already exists!"<<endl;
+        cout<<"\nUsername already exists!"<<endl;
         mysql_free_result(result);
         return false;
     }
@@ -34,14 +34,14 @@ bool signupUser(MYSQL* connection, string username, string password,string email
         cout<<"User registered successfully!"<<endl;
         return true;
     }
-    cout<<"Error registering user: "<<mysql_error(connection)<<endl;
+    cout<<"\nError registering user: "<<mysql_error(connection)<<endl;
     return false;
 }
 
 
 void forgetPassword(MYSQL* connection){
     string email;
-    cout<<"Enter your email: ";
+    cout<<"\nEnter your email: ";
     cin>>email;
 
     string pass_query="SELECT username, password, email FROM users WHERE email = '"+email+"'";
@@ -49,7 +49,7 @@ void forgetPassword(MYSQL* connection){
     MYSQL_RES* result = mysql_store_result(connection);
     
     if (mysql_num_rows(result)==0){
-        cout<<"No account found with that email!"<<endl;
+        cout<<"\nNo account found with that email!"<<endl;
         mysql_free_result(result);
         return;
     }
@@ -61,7 +61,7 @@ void forgetPassword(MYSQL* connection){
    mysql_free_result(result);
 
    char YN;
-    cout<<"Do you want to reset your password? (y/n): ";
+    cout<<"\nDo you want to reset your password? (y/n): ";
     cin>>YN;
     if(YN=='y' || YN=='Y'){
         string new_password;
@@ -71,7 +71,7 @@ void forgetPassword(MYSQL* connection){
         if(mysql_query(connection,update_query.c_str())==0){
             cout<<"Password updated successfully!"<<endl;
         }else{
-            cout<<"Error updating password: "<<mysql_error(connection)<<endl;
+            cout<<"\nError updating password: "<<mysql_error(connection)<<endl;
         }
     }
 }
@@ -85,10 +85,26 @@ int main(){
    connection = mysql_init(nullptr);
 
    if(!mysql_real_connect(connection,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT,nullptr,0)){
+    system("cls");
     cout<<"Connection error: "<< mysql_error(connection) <<endl;
     mysql_close(connection); //optional
     return 1;
    }else{
+    system("cls");
+    cout<<"Connecting to database......\n";
+    #ifdef _WIN32
+    Sleep(2000);
+    #else
+        sleep(2);
+    #endif
+    system("cls");
+    cout<<"Be Patient for few seconds..........\n";
+    #ifdef _WIN32
+    Sleep(2000);
+    #else
+        sleep(2);
+    #endif
+    system("cls");
     cout<<"Connected to database successfully!"<<endl;
    }
 #ifdef _WIN32
@@ -99,15 +115,19 @@ int main(){
 
     while(true){
         int choice;
+        system("cls");
         cout<<"\n1. Login"<<endl;
         cout<<"2. Sign Up"<<endl;
         cout<<"3. Forget Password"<<endl;
         cout<<"4. Exit"<<endl;
-        cout<<"Enter your choice: ";
+        cout<<"\nEnter your choice: ";
         cin>>choice;
+        if(cin.fail()){cin.clear();cin.ignore();}
         switch(choice){
         case 1:
             {
+                system("cls");
+                cout<<"========================\n";
                 string username, password;
                 cout<<"Enter username: ";
                 cin>>username;
@@ -115,14 +135,15 @@ int main(){
                 cin>>password;
 
                 if(loginUser(connection, username, password)){
-                    cout<<"Login successful!"<<endl;
+                    cout<<"\nLogin successful!"<<endl;
                 }else{
-                    cout<<"Invalid Credentials!"<<endl;
+                    cout<<"\nInvalid Credentials!"<<endl;
                 }
                 break;
             }
         case 2:
             {
+                system("cls");
                 string username, password, email;
                 cout<<"Enter username: ";
                 cin>>username;
@@ -135,14 +156,22 @@ int main(){
                 break;
             }
         case 3:
+            system("cls");
             forgetPassword(connection);
             break;
         case 4:
-            cout<<"GOODBYE!"<<endl;
+            system("cls");
+            cout<<"GOODBYE! Database has been closed......"<<endl;
             mysql_close(connection);
+            #ifdef _WIN32
+               Sleep(2000);
+            #else
+              sleep(2);
+            #endif
+            system("cls");
             exit(0);
         default:
-            cout<<"Invalid choice!"<<endl;
+            cout<<"\nInvalid choice!"<<endl;
         }
     }
 
