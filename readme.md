@@ -1,21 +1,24 @@
 # Login Page with MySQL — C++
 
-A console-based authentication system built in C++ with MySQL backend. Supports user login, signup, and password recovery.
+A console-based authentication system built in C++ with a MySQL backend.
 
 ---
-## Local MySQL db
+
+## Local MySQL DB
 ![alt text](image.png)
+
 ---
 
 ## Features
 
-- User Login with attempt limiter (3 tries)
+- User Login with 3-attempt lockout
 - User Signup
-- Forgot Password (reset via email)
+- Forgot Password (reset via registered email)
+- Delete Account (requires password confirmation)
 - Password masking (`*`) while typing
-- SHA2 password hashing
-- SQL injection protection via prepared statements
-- Credentials loaded from `.env` file
+- SHA2-256 password hashing
+- SQL injection protection via `mysql_real_escape_string`
+- DB credentials loaded from `.env` file
 
 ---
 
@@ -38,7 +41,7 @@ source mysql.sql
 This creates the `login` database and a `users` table with a test user:
 - **Username:** `test` | **Password:** `test` | **Email:** `test@test.com`
 
-Since passwords are now hashed with SHA2, update the test user after setup:
+Hash the test user's password after setup:
 
 ```sql
 UPDATE users SET password = SHA2('test', 256) WHERE username = 'test';
@@ -57,8 +60,6 @@ DB_PASSWORD=your_password
 DB_NAME=login
 DB_PORT=3306
 ```
-
-The app reads this file at runtime. No credentials are stored in the source code.
 
 ---
 
@@ -79,6 +80,7 @@ login.exe
 ```
 loginPage_MySQL/
 ├── main.cpp        # Application source
+├── headers.h       # All includes and namespaces
 ├── mysql.sql       # Database schema & seed data
 ├── build.bat       # Build script
 ├── .env            # DB credentials (never commit this)
@@ -89,9 +91,22 @@ loginPage_MySQL/
 
 ---
 
+## Menu Options
+
+| Option | Description |
+|--------|-------------|
+| 1 | Login — enter username + password |
+| 2 | Sign Up — create a new account |
+| 3 | Forgot Password — reset via registered email |
+| 4 | Delete Account — requires username + password + `yes` confirmation |
+| 5 | Exit |
+
+---
+
 ## Security
 
-- Passwords are hashed using `SHA2(password, 256)` — never stored in plain text
-- All queries use prepared statements — no SQL injection
-- Credentials are loaded from `.env` — not hardcoded in source
-- `.env` is listed in `.gitignore` — safe to use with Git
+- Passwords hashed with `SHA2(password, 256)` — never stored in plain text
+- All queries use `mysql_real_escape_string` — no SQL injection
+- Credentials loaded from `.env` — not hardcoded in source
+- `.env` listed in `.gitignore` — safe to use with Git
+- Delete account requires valid credentials before deletion
