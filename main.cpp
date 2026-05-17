@@ -1,256 +1,256 @@
 #include "headers.h"
-static string trim(string s) {
-    while (!s.empty() && (s.back() == '\r' || s.back() == '\n' || s.back() == ' '))
-        s.pop_back();
-    return s;
+static string trimWhitespace(string str){
+    while(!str.empty()&&(str.back()=='\r'||str.back()=='\n'||str.back()==' '))
+        str.pop_back();
+    return str;
 }
-map<string, string> loadEnv(const string& filepath = ".env") {
-    map<string, string> env;
-    ifstream file(filepath);
-    if (!file.is_open()) return env;
+map<string,string> loadEnvFile(const string& filePath=".env"){
+    map<string,string> envMap;
+    ifstream envFile(filePath);
+    if(!envFile.is_open()) return envMap;
     string line;
-    while (getline(file, line)) {
-        line = trim(line);
-        if (line.empty() || line[0] == '#') continue;
-        auto pos = line.find('=');
-        if (pos == string::npos) continue;
-        env[trim(line.substr(0, pos))] = trim(line.substr(pos + 1));
+    while(getline(envFile,line)){
+        line=trimWhitespace(line);
+        if(line.empty()||line[0]=='#') continue;
+        auto delimPos=line.find('=');
+        if(delimPos==string::npos) continue;
+        envMap[trimWhitespace(line.substr(0,delimPos))]=trimWhitespace(line.substr(delimPos+1));
     }
-    return env;
+    return envMap;
 }
-void clearScreen() {
+void clearScreen(){
 #ifdef _WIN32
     system("cls");
 #else
     system("clear");
 #endif
 }
-void pauseMs(int ms) {
+void pauseMilliseconds(int milliseconds){
 #ifdef _WIN32
-    Sleep(ms);
+    Sleep(milliseconds);
 #else
-    usleep(ms * 1000);
+    usleep(milliseconds*1000);
 #endif
 }
-void pressAnyKey() {
-    cout << "\n  [Press ENTER to return to menu...]" << flush;
+void pressEnterToContinue(){
+    cout<<"\n  [Press ENTER to return to menu...]"<<flush;
     cin.clear();
-    cin.ignore(1000, '\n');
+    cin.ignore(1000,'\n');
 }
-void printHeader(const string& title) {
+void printHeader(const string& title){
     clearScreen();
-    cout << "\n  ===== " << title << " =====\n\n" << flush;
+    cout<<"\n  ===== "<<title<<" =====\n\n"<<flush;
 }
-void printSuccess(const string& msg) { cout << "\n  [ OK ]  " << msg << "\n" << flush; }
-void printError  (const string& msg) { cout << "\n  [FAIL]  " << msg << "\n" << flush; }
-void printInfo   (const string& msg) { cout << "\n  [ i  ]  " << msg << "\n" << flush; }
-static string esc(MYSQL* conn, const string& s) {
-    string buf(s.size() * 2 + 1, '\0');
-    buf.resize(mysql_real_escape_string(conn, &buf[0], s.c_str(), (unsigned long)s.size()));
-    return buf;
+void printSuccess(const string& message){cout<<"\n  [ OK ]  "<<message<<"\n"<<flush;}
+void printError(const string& message){cout<<"\n  [FAIL]  "<<message<<"\n"<<flush;}
+void printInfo(const string& message){cout<<"\n  [ i  ]  "<<message<<"\n"<<flush;}
+static string escapeString(MYSQL* dbConnection,const string& rawValue){
+    string escapedBuffer(rawValue.size()*2+1,'\0');
+    escapedBuffer.resize(mysql_real_escape_string(dbConnection,&escapedBuffer[0],rawValue.c_str(),(unsigned long)rawValue.size()));
+    return escapedBuffer;
 }
-static MYSQL_RES* runSelect(MYSQL* conn, const string& sql) {
-    if (mysql_query(conn, sql.c_str())) return nullptr;
-    return mysql_store_result(conn);
+static MYSQL_RES* runSelectQuery(MYSQL* dbConnection,const string& query){
+    if(mysql_query(dbConnection,query.c_str())) return nullptr;
+    return mysql_store_result(dbConnection);
 }
-static bool runExec(MYSQL* conn, const string& sql) {
-    return mysql_query(conn, sql.c_str()) == 0;
+static bool runExecuteQuery(MYSQL* dbConnection,const string& query){
+    return mysql_query(dbConnection,query.c_str())==0;
 }
-bool loginUser(MYSQL* conn, const string& username, const string& password) {
-    string q = "SELECT id FROM users WHERE username='" + esc(conn, username) +
-               "' AND password=SHA2('" + esc(conn, password) + "',256)";
-    MYSQL_RES* res = runSelect(conn, q);
-    if (!res) return false;
-    bool found = (mysql_num_rows(res) > 0);
-    mysql_free_result(res);
-    return found;
+bool loginUser(MYSQL* dbConnection,const string& username,const string& password){
+    string query="SELECT id FROM users WHERE username='"+escapeString(dbConnection,username)+
+                 "' AND password=SHA2('"+escapeString(dbConnection,password)+"',256)";
+    MYSQL_RES* result=runSelectQuery(dbConnection,query);
+    if(!result) return false;
+    bool isFound=(mysql_num_rows(result)>0);
+    mysql_free_result(result);
+    return isFound;
 }
-bool usernameExists(MYSQL* conn, const string& username) {
-    string q = "SELECT id FROM users WHERE username='" + esc(conn, username) + "'";
-    MYSQL_RES* res = runSelect(conn, q);
-    if (!res) return false;
-    bool found = (mysql_num_rows(res) > 0);
-    mysql_free_result(res);
-    return found;
+bool usernameExists(MYSQL* dbConnection,const string& username){
+    string query="SELECT id FROM users WHERE username='"+escapeString(dbConnection,username)+"'";
+    MYSQL_RES* result=runSelectQuery(dbConnection,query);
+    if(!result) return false;
+    bool isFound=(mysql_num_rows(result)>0);
+    mysql_free_result(result);
+    return isFound;
 }
-bool emailExists(MYSQL* conn, const string& email) {
-    string q = "SELECT id FROM users WHERE email='" + esc(conn, email) + "'";
-    MYSQL_RES* res = runSelect(conn, q);
-    if (!res) return false;
-    bool found = (mysql_num_rows(res) > 0);
-    mysql_free_result(res);
-    return found;
+bool emailExists(MYSQL* dbConnection,const string& email){
+    string query="SELECT id FROM users WHERE email='"+escapeString(dbConnection,email)+"'";
+    MYSQL_RES* result=runSelectQuery(dbConnection,query);
+    if(!result) return false;
+    bool isFound=(mysql_num_rows(result)>0);
+    mysql_free_result(result);
+    return isFound;
 }
-bool signupUser(MYSQL* conn, const string& username, const string& password, const string& email) {
-    if (usernameExists(conn, username)) { printError("Username '" + username + "' is already taken."); return false; }
-    if (emailExists(conn, email))       { printError("Email '" + email + "' is already registered."); return false; }
-    string q = "INSERT INTO users(username,password,email) VALUES('" +
-               esc(conn, username) + "',SHA2('" + esc(conn, password) + "',256),'" + esc(conn, email) + "')";
-    if (!runExec(conn, q)) { printError("Signup failed: " + string(mysql_error(conn))); return false; }
-    printSuccess("Account created for '" + username + "'! You can now log in.");
+bool signupUser(MYSQL* dbConnection,const string& username,const string& password,const string& email){
+    if(usernameExists(dbConnection,username)){printError("Username '"+username+"' is already taken.");return false;}
+    if(emailExists(dbConnection,email)){printError("Email '"+email+"' is already registered.");return false;}
+    string query="INSERT INTO users(username,password,email) VALUES('"+
+                 escapeString(dbConnection,username)+"',SHA2('"+escapeString(dbConnection,password)+"',256),'"+escapeString(dbConnection,email)+"')";
+    if(!runExecuteQuery(dbConnection,query)){printError("Signup failed: "+string(mysql_error(dbConnection)));return false;}
+    printSuccess("Account created for '"+username+"'! You can now log in.");
     return true;
 }
-bool deleteAccount(MYSQL* conn, const string& username, const string& password) {
-    if (!loginUser(conn, username, password)) { printError("Invalid credentials. Cannot delete account."); return false; }
-    string q = "DELETE FROM users WHERE username='" + esc(conn, username) + "'";
-    if (!runExec(conn, q)) { printError("Delete failed: " + string(mysql_error(conn))); return false; }
-    printSuccess("Account '" + username + "' deleted successfully.");
+bool deleteAccount(MYSQL* dbConnection,const string& username,const string& password){
+    if(!loginUser(dbConnection,username,password)){printError("Invalid credentials. Cannot delete account.");return false;}
+    string query="DELETE FROM users WHERE username='"+escapeString(dbConnection,username)+"'";
+    if(!runExecuteQuery(dbConnection,query)){printError("Delete failed: "+string(mysql_error(dbConnection)));return false;}
+    printSuccess("Account '"+username+"' deleted successfully.");
     return true;
 }
-bool resetPassword(MYSQL* conn, const string& email, const string& newPassword) {
-    if (!emailExists(conn, email)) { printError("No account found for '" + email + "'."); return false; }
-    string q = "UPDATE users SET password=SHA2('" + esc(conn, newPassword) + "',256) WHERE email='" + esc(conn, email) + "'";
-    if (!runExec(conn, q)) { printError("Reset failed: " + string(mysql_error(conn))); return false; }
-    printSuccess("Password reset for '" + email + "'.");
+bool resetPassword(MYSQL* dbConnection,const string& email,const string& newPassword){
+    if(!emailExists(dbConnection,email)){printError("No account found for '"+email+"'.");return false;}
+    string query="UPDATE users SET password=SHA2('"+escapeString(dbConnection,newPassword)+"',256) WHERE email='"+escapeString(dbConnection,email)+"'";
+    if(!runExecuteQuery(dbConnection,query)){printError("Reset failed: "+string(mysql_error(dbConnection)));return false;}
+    printSuccess("Password reset for '"+email+"'.");
     return true;
 }
-string getPassword(const string& prompt) {
-    cout << prompt << flush;
-    string pwd;
+string readPasswordMasked(const string& prompt){
+    cout<<prompt<<flush;
+    string password;
 #ifdef _WIN32
-    char ch;
-    while ((ch = _getch()) != '\r' && ch != '\n') {
-        if (ch == '\b' && !pwd.empty()) { pwd.pop_back(); cout << "\b \b" << flush; }
-        else if ((unsigned char)ch >= 32) { pwd += ch; cout << '*' << flush; }
+    char keyChar;
+    while((keyChar=_getch())!='\r'&&keyChar!='\n'){
+        if(keyChar=='\b'&&!password.empty()){password.pop_back();cout<<"\b \b"<<flush;}
+        else if((unsigned char)keyChar>=32){password+=keyChar;cout<<'*'<<flush;}
     }
-    cout << '\n';
+    cout<<'\n';
 #else
-    struct termios oldt, newt;
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~ECHO;
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    getline(cin, pwd);
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    cout << '\n';
+    struct termios oldTermSettings,newTermSettings;
+    tcgetattr(STDIN_FILENO,&oldTermSettings);
+    newTermSettings=oldTermSettings;
+    newTermSettings.c_lflag&=~ECHO;
+    tcsetattr(STDIN_FILENO,TCSANOW,&newTermSettings);
+    getline(cin,password);
+    tcsetattr(STDIN_FILENO,TCSANOW,&oldTermSettings);
+    cout<<'\n';
 #endif
-    return trim(pwd);
+    return trimWhitespace(password);
 }
-string getInput(const string& prompt) {
-    cout << prompt << flush;
-    string s;
-    getline(cin, s);
-    return trim(s);
+string readTextInput(const string& prompt){
+    cout<<prompt<<flush;
+    string userInput;
+    getline(cin,userInput);
+    return trimWhitespace(userInput);
 }
-bool isValidEmail(const string& e) {
-    size_t at = e.find('@'), dot = e.rfind('.');
-    return at != string::npos && dot != string::npos && at > 0 && dot > at + 1 && dot < e.size() - 1;
+bool isValidEmail(const string& email){
+    size_t atPos=email.find('@'),dotPos=email.rfind('.');
+    return atPos!=string::npos&&dotPos!=string::npos&&atPos>0&&dotPos>atPos+1&&dotPos<email.size()-1;
 }
-void handleLogin(MYSQL* conn, int& loginAttempts) {
-    const int MAX = 3;
+void handleLogin(MYSQL* dbConnection,int& failedAttempts){
+    const int maxAttempts=3;
     printHeader("Login");
-    if (loginAttempts >= MAX) {
+    if(failedAttempts>=maxAttempts){
         printError("Too many failed attempts. Account temporarily locked.");
         printInfo("Use 'Forgot Password' to regain access.");
-        pressAnyKey();
+        pressEnterToContinue();
         return;
     }
-    string username = getInput("  Username: ");
-    string password = getPassword("  Password: ");
-    if (username.empty() || password.empty()) { printError("Username and password cannot be empty."); pressAnyKey(); return; }
-    cout << "\n  Authenticating..." << flush;
-    pauseMs(500);
-    if (!usernameExists(conn, username)) { printError("No account found for '" + username + "'. Please sign up first."); pressAnyKey(); return; }
-    if (loginUser(conn, username, password)) {
-        loginAttempts = 0;
-        printSuccess("LOGIN SUCCESSFUL!  Welcome back, " + username + "!");
-    } else {
-        ++loginAttempts;
-        int rem = MAX - loginAttempts;
-        if (rem > 0) printError("Wrong password. " + to_string(rem) + " attempt(s) remaining.");
-        else         printError("Wrong password. Account is now temporarily locked.");
+    string username=readTextInput("  Username: ");
+    string password=readPasswordMasked("  Password: ");
+    if(username.empty()||password.empty()){printError("Username and password cannot be empty.");pressEnterToContinue();return;}
+    cout<<"\n  Authenticating..."<<flush;
+    pauseMilliseconds(500);
+    if(!usernameExists(dbConnection,username)){printError("No account found for '"+username+"'. Please sign up first.");pressEnterToContinue();return;}
+    if(loginUser(dbConnection,username,password)){
+        failedAttempts=0;
+        printSuccess("LOGIN SUCCESSFUL! Welcome back, "+username+"!");
+    }else{
+        ++failedAttempts;
+        int remainingAttempts=maxAttempts-failedAttempts;
+        if(remainingAttempts>0) printError("Wrong password. "+to_string(remainingAttempts)+" attempt(s) remaining.");
+        else printError("Wrong password. Account is now temporarily locked.");
     }
-    pressAnyKey();
+    pressEnterToContinue();
 }
-void handleSignup(MYSQL* conn) {
+void handleSignup(MYSQL* dbConnection){
     printHeader("Sign Up");
-    string username = getInput("  Username (max 30): ");
-    string password = getPassword("  Password (max 50): ");
-    string email    = getInput("  Email:              ");
-    if (username.empty() || password.empty() || email.empty()) { printError("All fields are required."); pressAnyKey(); return; }
-    if (username.size() > 30) { printError("Username max 30 characters."); pressAnyKey(); return; }
-    if (password.size() > 50) { printError("Password max 50 characters."); pressAnyKey(); return; }
-    if (!isValidEmail(email))  { printError("Invalid email address.");      pressAnyKey(); return; }
-    cout << "\n  Creating account..." << flush;
-    pauseMs(500);
-    signupUser(conn, username, password, email);
-    pressAnyKey();
+    string username=readTextInput("  Username (max 30): ");
+    string password=readPasswordMasked("  Password (max 50): ");
+    string email=readTextInput("  Email: ");
+    if(username.empty()||password.empty()||email.empty()){printError("All fields are required.");pressEnterToContinue();return;}
+    if(username.size()>30){printError("Username max 30 characters.");pressEnterToContinue();return;}
+    if(password.size()>50){printError("Password max 50 characters.");pressEnterToContinue();return;}
+    if(!isValidEmail(email)){printError("Invalid email address.");pressEnterToContinue();return;}
+    cout<<"\n  Creating account..."<<flush;
+    pauseMilliseconds(500);
+    signupUser(dbConnection,username,password,email);
+    pressEnterToContinue();
 }
-void handleForgotPassword(MYSQL* conn) {
+void handleForgotPassword(MYSQL* dbConnection){
     printHeader("Forgot Password");
-    string email = getInput("  Registered email: ");
-    if (!isValidEmail(email))        { printError("Invalid email address.");                pressAnyKey(); return; }
-    if (!emailExists(conn, email))   { printError("No account found for '" + email + "'."); pressAnyKey(); return; }
-    string newPassword = getPassword("  New password: ");
-    if (newPassword.empty() || newPassword.size() > 50) { printError("Password must be 1-50 characters."); pressAnyKey(); return; }
-    cout << "\n  Resetting password..." << flush;
-    pauseMs(500);
-    resetPassword(conn, email, newPassword);
-    pressAnyKey();
+    string email=readTextInput("  Registered email: ");
+    if(!isValidEmail(email)){printError("Invalid email address.");pressEnterToContinue();return;}
+    if(!emailExists(dbConnection,email)){printError("No account found for '"+email+"'.");pressEnterToContinue();return;}
+    string newPassword=readPasswordMasked("  New password: ");
+    if(newPassword.empty()||newPassword.size()>50){printError("Password must be 1-50 characters.");pressEnterToContinue();return;}
+    cout<<"\n  Resetting password..."<<flush;
+    pauseMilliseconds(500);
+    resetPassword(dbConnection,email,newPassword);
+    pressEnterToContinue();
 }
-void handleDeleteAccount(MYSQL* conn) {
+void handleDeleteAccount(MYSQL* dbConnection){
     printHeader("Delete Account");
-    string username = getInput("  Username: ");
-    string password = getPassword("  Password: ");
-    if (username.empty() || password.empty()) { printError("Username and password cannot be empty."); pressAnyKey(); return; }
-    string confirm = getInput("\n  Are you sure you want to delete '" + username + "'? (yes/no): ");
-    if (confirm != "yes") { printInfo("Deletion cancelled."); pressAnyKey(); return; }
-    cout << "\n  Deleting account..." << flush;
-    pauseMs(500);
-    deleteAccount(conn, username, password);
-    pressAnyKey();
+    string username=readTextInput("  Username: ");
+    string password=readPasswordMasked("  Password: ");
+    if(username.empty()||password.empty()){printError("Username and password cannot be empty.");pressEnterToContinue();return;}
+    string confirmation=readTextInput("\n  Are you sure you want to delete '"+username+"'? (yes/no): ");
+    if(confirmation!="yes"){printInfo("Deletion cancelled.");pressEnterToContinue();return;}
+    cout<<"\n  Deleting account..."<<flush;
+    pauseMilliseconds(500);
+    deleteAccount(dbConnection,username,password);
+    pressEnterToContinue();
 }
-int main() {
-    auto env = loadEnv();
-    const string host = env.count("DB_HOST")     ? env["DB_HOST"]       : "localhost";
-    const string user = env.count("DB_USER")     ? env["DB_USER"]       : "root";
-    const string pass = env.count("DB_PASSWORD") ? env["DB_PASSWORD"]   : "";
-    const string name = env.count("DB_NAME")     ? env["DB_NAME"]       : "login";
-    const int    port = env.count("DB_PORT")     ? stoi(env["DB_PORT"]) : 3306;
+int main(){
+    map<string,string> envConfig=loadEnvFile();
+    const string dbHost=envConfig.count("DB_HOST")?envConfig["DB_HOST"]:"localhost";
+    const string dbUser=envConfig.count("DB_USER")?envConfig["DB_USER"]:"root";
+    const string dbPass=envConfig.count("DB_PASSWORD")?envConfig["DB_PASSWORD"]:"";
+    const string dbName=envConfig.count("DB_NAME")?envConfig["DB_NAME"]:"login";
+    const int dbPort=envConfig.count("DB_PORT")?stoi(envConfig["DB_PORT"]):3306;
     clearScreen();
-    cout << "\n  Connecting to " << user << "@" << host << ":" << port << "/" << name << " ...\n" << flush;
-    MYSQL* conn = mysql_init(nullptr);
-    if (!conn) { cerr << "\n  [FAIL] mysql_init() failed.\n"; return 1; }
-    if (!mysql_real_connect(conn, host.c_str(), user.c_str(), pass.c_str(), name.c_str(), port, nullptr, 0)) {
-        cerr << "\n  [FAIL] " << mysql_error(conn) << "\n";
-        mysql_close(conn);
+    cout<<"\n  Connecting to "<<dbUser<<"@"<<dbHost<<":"<<dbPort<<"/"<<dbName<<" ...\n"<<flush;
+    MYSQL* dbConnection=mysql_init(nullptr);
+    if(!dbConnection){cerr<<"\n  [FAIL] mysql_init() failed.\n";return 1;}
+    if(!mysql_real_connect(dbConnection,dbHost.c_str(),dbUser.c_str(),dbPass.c_str(),dbName.c_str(),dbPort,nullptr,0)){
+        cerr<<"\n  [FAIL] "<<mysql_error(dbConnection)<<"\n";
+        mysql_close(dbConnection);
         return 1;
     }
-    mysql_set_character_set(conn, "utf8mb4");
+    mysql_set_character_set(dbConnection,"utf8mb4");
     printSuccess("Connected to database successfully!");
-    pauseMs(800);
-    int loginAttempts = 0;
-    while (true) {
+    pauseMilliseconds(800);
+    int failedLoginAttempts=0;
+    while(true){
         clearScreen();
-        cout << "\n  ===== User Authentication =====\n\n"
-             << "    1.  Login\n"
-             << "    2.  Sign Up\n"
-             << "    3.  Forgot Password\n"
-             << "    4.  Delete Account\n"
-             << "    5.  Exit\n\n"
-             << "  Choice (1-5): " << flush;
-        string input;
-        if (!getline(cin, input)) { mysql_close(conn); return 0; }
-        input = trim(input);
-        if (input.empty()) continue;
-        int choice = 0;
-        try { choice = stoi(input); } catch (...) { choice = -1; }
-        switch (choice) {
-            case 1: handleLogin(conn, loginAttempts); break;
-            case 2: handleSignup(conn);               break;
-            case 3: handleForgotPassword(conn);       break;
-            case 4: handleDeleteAccount(conn);        break;
+        cout<<"\n  ===== User Authentication =====\n\n"
+            <<"    1.  Login\n"
+            <<"    2.  Sign Up\n"
+            <<"    3.  Forgot Password\n"
+            <<"    4.  Delete Account\n"
+            <<"    5.  Exit\n\n"
+            <<"  Choice (1-5): "<<flush;
+        string menuInput;
+        if(!getline(cin,menuInput)){mysql_close(dbConnection);return 0;}
+        menuInput=trimWhitespace(menuInput);
+        if(menuInput.empty()) continue;
+        int menuChoice=0;
+        try{menuChoice=stoi(menuInput);}catch(...){menuChoice=-1;}
+        switch(menuChoice){
+            case 1: handleLogin(dbConnection,failedLoginAttempts); break;
+            case 2: handleSignup(dbConnection); break;
+            case 3: handleForgotPassword(dbConnection); break;
+            case 4: handleDeleteAccount(dbConnection); break;
             case 5:
                 clearScreen();
-                cout << "\n  Closing connection...\n" << flush;
-                mysql_close(conn);
-                pauseMs(400);
+                cout<<"\n  Closing connection...\n"<<flush;
+                mysql_close(dbConnection);
+                pauseMilliseconds(400);
                 printSuccess("Goodbye!");
-                pauseMs(600);
+                pauseMilliseconds(600);
                 return 0;
             default:
                 printError("Invalid choice. Enter 1-5.");
-                pauseMs(600);
+                pauseMilliseconds(600);
         }
     }
 }
