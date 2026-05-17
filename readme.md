@@ -3,12 +3,19 @@
 A console-based authentication system built in C++ with MySQL backend. Supports user login, signup, and password recovery.
 
 ---
+## Local MySQL db
+![alt text](image.png)
+---
 
 ## Features
 
-- User Login
+- User Login with attempt limiter (3 tries)
 - User Signup
-- Forgot Password (view & reset via email)
+- Forgot Password (reset via email)
+- Password masking (`*`) while typing
+- SHA2 password hashing
+- SQL injection protection via prepared statements
+- Credentials loaded from `.env` file
 
 ---
 
@@ -31,19 +38,27 @@ source mysql.sql
 This creates the `login` database and a `users` table with a test user:
 - **Username:** `test` | **Password:** `test` | **Email:** `test@test.com`
 
+Since passwords are now hashed with SHA2, update the test user after setup:
+
+```sql
+UPDATE users SET password = SHA2('test', 256) WHERE username = 'test';
+```
+
 ---
 
 ## Configuration
 
-Update the credentials in `main.cpp` if needed:
+Create a `.env` file in the project root (already included, never commit it):
 
-```cpp
-const char* DB_HOST     = "localhost";
-const char* DB_USER     = "root";
-const char* DB_PASSWORD = "your_password";
-const char* DB_NAME     = "login";
-const int   DB_PORT     = 3306;
+```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=login
+DB_PORT=3306
 ```
+
+The app reads this file at runtime. No credentials are stored in the source code.
 
 ---
 
@@ -54,7 +69,8 @@ build.bat
 login.exe
 ```
 
-> The build script uses `g++` and links against MySQL Server at `C:\Program Files\MySQL\MySQL Server 9.7`.
+> The build script uses `g++` and links against MySQL Server at `C:\Program Files\MySQL\MySQL Server 9.7`.  
+> Make sure `.env` is in the same directory as `login.exe` when running.
 
 ---
 
@@ -65,12 +81,17 @@ loginPage_MySQL/
 ├── main.cpp        # Application source
 ├── mysql.sql       # Database schema & seed data
 ├── build.bat       # Build script
+├── .env            # DB credentials (never commit this)
+├── .gitignore      # Ignores .env and login.exe
 ├── libmysql.dll    # MySQL client library
 └── login.exe       # Compiled binary
 ```
 
 ---
 
-## ⚠️ Security Notice
+## Security
 
-This project stores passwords in **plain text** and is vulnerable to **SQL injection**. It is intended for **learning purposes only** — do not use in production.
+- Passwords are hashed using `SHA2(password, 256)` — never stored in plain text
+- All queries use prepared statements — no SQL injection
+- Credentials are loaded from `.env` — not hardcoded in source
+- `.env` is listed in `.gitignore` — safe to use with Git
